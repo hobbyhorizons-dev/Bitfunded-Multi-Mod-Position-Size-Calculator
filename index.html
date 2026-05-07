@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitfunded Position Size Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b12;
+    --surface: #0e1320;
+    --surface2: #141926;
+    --surface3: #1a2030;
+    --border: #1e2738;
+    --border2: #263044;
+    --accent: #00c8ff;
+    --accent2: #0090d0;
+    --accent-glow: rgba(0,200,255,0.15);
+    --green: #30e0a0;
+    --green-dim: rgba(48,224,160,0.12);
+    --red: #e04060;
+    --red-dim: rgba(224,64,96,0.12);
+    --orange: #f0a030;
+    --text: #dde4f0;
+    --muted: #5a6880;
+    --muted2: #3a4558;
+    --bf-blue: #1a8cff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 16px 16px 24px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,144,208,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1140px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: #0a1525;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,200,255,0.08), transparent);
+  }
+
+  /* Bitfunded bars icon */
+  .bf-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 22px;
+  }
+  .bf-bar {
+    border-radius: 2px;
+    background: linear-gradient(180deg, #1a9fff, #0060d0);
+  }
+  .bf-bar:nth-child(1) { width: 7px; height: 12px; }
+  .bf-bar:nth-child(2) { width: 7px; height: 20px; }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .header-right {
+    text-align: right;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.2);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .header-badge::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .header-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ── MODE TABS ── */
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 5px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 9px 8px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: none;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .mode-tab:hover { color: var(--text); }
+
+  .mode-tab.active {
+    background: rgba(0,200,255,0.1);
+    border-color: rgba(0,200,255,0.25);
+    color: var(--accent);
+  }
+
+  .mode-tab .tab-icon { font-size: 14px; display: block; margin-bottom: 2px; }
+
+  /* ── COLUMNS ── */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.4), transparent);
+  }
+
+  .card-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── FIELDS ── */
+  .field { margin-bottom: 13px; }
+
+  .field label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  .field label .hint {
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .input-wrap { position: relative; display: flex; align-items: center; }
+
+  .input-wrap input[type="number"],
+  .input-wrap input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 40px 9px 12px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+  .input-wrap input[type="number"]::-webkit-outer-spin-button,
+  .input-wrap input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .input-wrap input::placeholder { color: var(--muted2); font-weight: 400; }
+  .input-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: var(--surface3);
+  }
+
+  .input-unit {
+    position: absolute; right: 11px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    color: var(--accent); pointer-events: none;
+  }
+
+  .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    flex: 1; height: 3px;
+    background: var(--border);
+    border-radius: 4px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(0,200,255,0.5);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: none; cursor: pointer;
+  }
+
+  .slider-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    color: var(--accent); min-width: 36px; text-align: right;
+  }
+
+  /* ── SL INPUT TOGGLE ── */
+  .sl-toggle {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+
+  .sl-toggle-btn {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .sl-toggle-btn.active {
+    background: rgba(0,200,255,0.1);
+    border-color: rgba(0,200,255,0.3);
+    color: var(--accent);
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 14px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-divider::before, .section-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── BUTTON ── */
+  .btn-calc {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #040810;
+    border: none; border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+    margin-top: 6px;
+  }
+  .btn-calc:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,255,0.35); }
+  .btn-calc:active { transform: translateY(0); }
+  .btn-calc.shake { animation: shake 0.4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)} 80%{transform:translateX(-3px)} }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* ── RESULTS ── */
+  .result-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+  .result-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-item.highlight {
+    background: rgba(0,200,255,0.07);
+    border-color: rgba(0,200,255,0.2);
+  }
+
+  .result-item.loss-item {
+    background: var(--red-dim);
+    border-color: rgba(224,64,96,0.25);
+  }
+
+  .result-item.warn-item {
+    background: rgba(240,160,48,0.08);
+    border-color: rgba(240,160,48,0.25);
+  }
+
+  .result-item.tp-item {
+    background: var(--green-dim);
+    border-color: rgba(48,224,160,0.2);
+  }
+
+  .result-item .label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .result-item .label span {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    margin-top: 1px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .result-item .value {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .result-item.highlight .value { color: var(--accent); }
+  .result-item.loss-item .value { color: var(--red); }
+  .result-item.warn-item .value { color: var(--orange); }
+  .result-item.tp-item .value { color: var(--green); }
+
+  .result-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .result-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* ── RISK BAR ── */
+  .risk-bar-wrap { margin: 10px 0 8px; }
+  .risk-bar-header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; font-weight: 600; margin-bottom: 5px;
+    color: var(--muted);
+  }
+  .risk-label { font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; }
+  .risk-bar-bg {
+    height: 4px; background: var(--border); border-radius: 4px; overflow: hidden;
+  }
+  .risk-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1), background 0.3s;
+    width: 0%;
+  }
+
+  /* ── BREAKDOWN ── */
+  .breakdown {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+
+  .breakdown-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .breakdown-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .formula-row {
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--muted);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .formula-row:last-child { border-bottom: none; }
+  .formula-row .num { color: var(--accent); }
+  .formula-row.verify { color: var(--green); }
+  .formula-row.warn-row { color: var(--orange); }
+
+  /* ── FEE NOTICE ── */
+  .fee-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: rgba(240,160,48,0.07);
+    border: 1px solid rgba(240,160,48,0.2);
+    border-radius: 9px;
+    padding: 9px 11px;
+    margin-top: 10px;
+    font-size: 9px;
+    color: var(--orange);
+    line-height: 1.5;
+    font-family: 'Space Mono', monospace;
+  }
+  .fee-notice .fi { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── RESET ── */
+  .btn-reset {
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 9px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    color: var(--muted2);
+    font-size: 9px;
+    font-family: 'Space Mono', monospace;
+    margin-top: 14px;
+    line-height: 1.7;
+  }
+
+  /* ── HIDDEN ── */
+  .hidden { display: none !important; }
+
+  /* ── MODE SECTIONS ── */
+  .mode-section { display: none; }
+  .mode-section.active { display: block; }
+
+  /* ── SMALL LABEL TAG ── */
+  .tag {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .tag-blue { background: rgba(0,200,255,0.12); color: var(--accent); }
+  .tag-green { background: var(--green-dim); color: var(--green); }
+  .tag-red { background: var(--red-dim); color: var(--red); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">
+        <div class="bf-bars">
+          <div class="bf-bar"></div>
+          <div class="bf-bar"></div>
+        </div>
+      </div>
+      <div>
+        <div class="logo-text">Bit<span>funded</span></div>
+        <div style="font-size:9px; color:var(--muted); font-family:'Space Mono',monospace; margin-top:1px;">Position Size Calculator</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Fee &amp; Slippage Adjusted</div>
+      <div class="header-sub">Bitfunded-specific estimation model</div>
+    </div>
+  </div>
+
+  <!-- MODE TABS -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode(1)" id="tab1">
+      <span class="tab-icon">📐</span>Position Size Only
+    </button>
+    <button class="mode-tab" onclick="switchMode(2)" id="tab2">
+      <span class="tab-icon">💲</span>Price Mode
+    </button>
+    <button class="mode-tab" onclick="switchMode(3)" id="tab3">
+      <span class="tab-icon">🎯</span>R:R Mode
+    </button>
+  </div>
+
+  <!-- COLUMNS -->
+  <div class="columns">
+
+    <!-- ════════════════════════════════════════════════════════
+         LEFT CARD — INPUTS
+    ════════════════════════════════════════════════════════ -->
+    <div class="card">
+      <div class="card-title">Trade Parameters</div>
+
+      <!-- ── COMMON FIELDS (all modes) ── -->
+      <div class="field">
+        <label>Trading Balance <span class="hint">Your funded account balance</span></label>
+        <div class="input-wrap">
+          <input type="number" id="inp-balance" placeholder="e.g. 150000" min="1" step="any">
+          <span class="input-unit">$</span>
+        </div>
+      </div>
+
+      <div class="field-grid-2">
+        <div class="field">
+          <label>Risk Level <span class="hint">% of balance</span></label>
+          <div class="input-wrap">
+            <input type="number" id="inp-risk" placeholder="e.g. 1" min="0.01" max="100" step="any">
+            <span class="input-unit">%</span>
+          </div>
+          <div class="slider-row">
+            <input type="range" id="sld-risk" min="0.1" max="10" step="0.1">
+            <span class="slider-val" id="lbl-risk">—</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Leverage <span class="hint">Multiplier</span></label>
+          <div class="input-wrap">
+            <input type="number" id="inp-lev" placeholder="e.g. 5" min="1" max="500" step="1">
+            <span class="input-unit">×</span>
+          </div>
+          <div class="slider-row">
+            <input type="range" id="sld-lev" min="1" max="125" step="1">
+            <span class="slider-val" id="lbl-lev">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MODE 1: Position Size Only ══ -->
+      <div class="mode-section active" id="mode1-fields">
+        <div class="section-divider">Stop Loss</div>
+        <div class="field">
+          <label>Stop Loss Distance <span class="hint">% from entry price</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m1-sl-pct" placeholder="e.g. 0.54" min="0.01" max="100" step="any">
+            <span class="input-unit">%</span>
+          </div>
+          <div class="slider-row">
+            <input type="range" id="sld-sl" min="0.1" max="20" step="0.01">
+            <span class="slider-val" id="lbl-sl">—</span>
+          </div>
+        </div>
+        <div class="fee-notice">
+          <div class="fi">⚠</div>
+          <div>Bitfunded estimation model will add ~<strong>14.33%</strong> overhead to Max Loss (fees + slippage), and back-calculate a <strong>tighter position size</strong> so your true risk matches your plan.</div>
+        </div>
+      </div>
+
+      <!-- ══ MODE 2: Price Mode ══ -->
+      <div class="mode-section" id="mode2-fields">
+        <div class="section-divider">Entry &amp; Prices</div>
+        <div class="field">
+          <label>Entry Price <span class="hint">Your planned entry</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m2-entry" placeholder="e.g. 2347.42" step="any">
+            <span class="input-unit">$</span>
+          </div>
+        </div>
+        <div class="field-grid-2">
+          <div class="field">
+            <label>Stop Loss Price <span class="tag tag-red">SL</span></label>
+            <div class="input-wrap">
+              <input type="number" id="m2-sl" placeholder="e.g. 2334.85" step="any">
+              <span class="input-unit">$</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>TP1 Price <span class="tag tag-green">TP1</span></label>
+            <div class="input-wrap">
+              <input type="number" id="m2-tp1" placeholder="e.g. 2366.33" step="any">
+              <span class="input-unit">$</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>TP2 Price <span class="tag tag-green">TP2</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m2-tp2" placeholder="e.g. 2390.00" step="any">
+            <span class="input-unit">$</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MODE 3: R:R Mode ══ -->
+      <div class="mode-section" id="mode3-fields">
+        <div class="section-divider">Entry Price</div>
+        <div class="field">
+          <label>Entry Price <span class="hint">Your planned entry</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m3-entry" placeholder="e.g. 2347.42" step="any">
+            <span class="input-unit">$</span>
+          </div>
+        </div>
+
+        <div class="section-divider">Stop Loss — choose input method</div>
+        <div class="sl-toggle">
+          <button class="sl-toggle-btn active" id="sl-btn-price" onclick="setSLMode('price')">📌 SL Price</button>
+          <button class="sl-toggle-btn" id="sl-btn-pct" onclick="setSLMode('pct')">📏 SL % Distance</button>
+        </div>
+
+        <div id="sl-price-wrap" class="field">
+          <label>Stop Loss Price <span class="tag tag-red">SL</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m3-sl-price" placeholder="e.g. 2334.85" step="any">
+            <span class="input-unit">$</span>
+          </div>
+        </div>
+        <div id="sl-pct-wrap" class="field hidden">
+          <label>SL Distance from Entry <span class="hint">%</span></label>
+          <div class="input-wrap">
+            <input type="number" id="m3-sl-pct" placeholder="e.g. 0.54" step="any" min="0.01" max="100">
+            <span class="input-unit">%</span>
+          </div>
+        </div>
+
+        <div class="section-divider">Planned R:R Ratios</div>
+        <div class="fee-notice" style="margin-bottom:10px; margin-top:0;">
+          <div class="fi">🎯</div>
+          <div>Enter your <strong>intended</strong> R:R (from TradingView). The tool will calculate target prices that deliver this R:R <strong>after</strong> Bitfunded fees &amp; slippage.</div>
+        </div>
+        <div class="field-grid-2">
+          <div class="field">
+            <label>TP1 R:R <span class="hint">e.g. 1:1.5</span></label>
+            <div class="input-wrap">
+              <input type="text" id="m3-rr1" placeholder="1:1.5" style="padding-right:12px;">
+            </div>
+          </div>
+          <div class="field">
+            <label>TP2 R:R <span class="hint">e.g. 1:3</span></label>
+            <div class="input-wrap">
+              <input type="text" id="m3-rr2" placeholder="1:3" style="padding-right:12px;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-calc" id="btn-calc" onclick="calculate()">⚡ Calculate</button>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         RIGHT CARD — RESULTS
+    ════════════════════════════════════════════════════════ -->
+    <div class="card">
+      <div class="card-title">Bitfunded Results</div>
+
+      <div id="empty-state" class="empty-state">
+        <div class="icon">📊</div>
+        Select a mode, fill your trade details<br>and press Calculate
+        <div style="margin-top:14px; font-size:9px; font-family:'Space Mono',monospace; color:var(--muted2); line-height:1.8;">
+          Fee model based on real Bitfunded trade:<br>
+          $278K position · $1678 raw SL → $1919 actual<br>
+          ≈ 14.33% overhead · 0.0865% of position
+        </div>
+      </div>
+
+      <div id="results-inner" style="display:none;">
+
+        <!-- M1 + M2 + M3 common -->
+        <div class="result-2col">
+          <div class="result-item highlight">
+            <div class="label">Position Size <span>Enter in market</span></div>
+            <div class="value" id="out-position">—</div>
+          </div>
+          <div class="result-item">
+            <div class="label">Required Margin <span>Your capital (with leverage)</span></div>
+            <div class="value" id="out-margin">—</div>
+          </div>
+        </div>
+
+        <div class="result-2col" style="margin-top:8px;">
+          <div class="result-item warn-item">
+            <div class="label">Max (Est.) Loss <span>Incl. Bitfunded fees &amp; slippage</span></div>
+            <div class="value" id="out-est-loss">—</div>
+          </div>
+          <div class="result-item loss-item">
+            <div class="label">Raw SL Loss <span>Without fees/slippage</span></div>
+            <div class="value" id="out-raw-loss">—</div>
+          </div>
+        </div>
+
+        <!-- M2 specific: adjusted RR -->
+        <div id="rr-results" class="hidden" style="margin-top:8px;">
+          <div class="section-divider" style="margin:10px 0 8px;">Adjusted R:R After Bitfunded Fees</div>
+          <div class="result-3col">
+            <div class="result-item">
+              <div class="label">SL Distance <span>From entry</span></div>
+              <div class="value" id="out-sl-pct">—</div>
+            </div>
+            <div class="result-item tp-item">
+              <div class="label">TP1 Adj. R:R <span>Net of fees</span></div>
+              <div class="value" id="out-rr1">—</div>
+            </div>
+            <div class="result-item tp-item">
+              <div class="label">TP2 Adj. R:R <span>Net of fees</span></div>
+              <div class="value" id="out-rr2">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- M3 specific: calculated prices -->
+        <div id="price-results" class="hidden" style="margin-top:8px;">
+          <div class="section-divider" style="margin:10px 0 8px;">Prices to Achieve Your R:R (After Fees)</div>
+          <div class="result-3col">
+            <div class="result-item loss-item">
+              <div class="label">Stop Loss Price <span>Adj. for fees</span></div>
+              <div class="value" id="out-sl-price">—</div>
+            </div>
+            <div class="result-item tp-item">
+              <div class="label">TP1 Price <span>Adj. for fees</span></div>
+              <div class="value" id="out-tp1-price">—</div>
+            </div>
+            <div class="result-item tp-item">
+              <div class="label">TP2 Price <span>Adj. for fees</span></div>
+              <div class="value" id="out-tp2-price">—</div>
+            </div>
+          </div>
+          <div class="result-2col" style="margin-top:8px;">
+            <div class="result-item">
+              <div class="label">TP1 Gross R:R <span>Before fees (chart R:R)</span></div>
+              <div class="value" id="out-tp1-gross-rr">—</div>
+            </div>
+            <div class="result-item">
+              <div class="label">TP2 Gross R:R <span>Before fees (chart R:R)</span></div>
+              <div class="value" id="out-tp2-gross-rr">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk bar -->
+        <div class="risk-bar-wrap" style="margin-top:10px;">
+          <div class="risk-bar-header">
+            <span>Risk Level</span>
+            <span class="risk-label" id="lbl-risk-level">—</span>
+          </div>
+          <div class="risk-bar-bg">
+            <div class="risk-bar-fill" id="risk-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Breakdown -->
+        <div class="breakdown">
+          <div class="breakdown-title">Bitfunded Fee Model Breakdown</div>
+          <div class="formula-row" id="f1"></div>
+          <div class="formula-row" id="f2"></div>
+          <div class="formula-row" id="f3"></div>
+          <div class="formula-row warn-row" id="f4"></div>
+          <div class="formula-row verify" id="f5"></div>
+        </div>
+
+        <button class="btn-reset" onclick="resetAll()">↺ Reset Calculator</button>
+      </div>
+    </div>
+
+  </div><!-- /columns -->
+
+  <div class="footer">
+    Bitfunded Fee Model: Raw SL Loss + (Position × 0.0865%) → Max Est. Loss &nbsp;|&nbsp;
+    Calibrated from real trade: $278K position · $1678 raw → $1919 actual deduction &nbsp;|&nbsp;
+    Not financial advice
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// BITFUNDED FEE/SLIPPAGE MODEL
+// Real trade data:
+//   Position:    $278,162
+//   Entry:       $2,347.42
+//   SL:          $2,334.85   → SL distance = 0.5355%
+//   Raw SL Loss: $1,678.42   (position × SL%)
+//   Actual loss: $1,919.00   (from account balance)
+//   Overhead:    $240.58     (fees + slippage)
+//   Overhead %:  14.33% of raw SL loss
+//   As % of pos: 0.0865% of position size (240.58/278162)
+//
+// FORMULA:
+//   feeOverhead  = positionSize × FEE_FACTOR
+//   estTotalLoss = rawSLLoss + feeOverhead
+//   OR equivalently:
+//   estTotalLoss = rawSLLoss × (1 + FEE_OVERHEAD_RATIO)
+// ══════════════════════════════════════════════════════════════
+const FEE_FACTOR         = 0.000865; // 0.0865% of position size → fees+slippage
+const FEE_OVERHEAD_RATIO = 0.1433;   // 14.33% on top of raw SL loss
+
+let currentMode = 1;
+let slInputMode = 'price'; // 'price' or 'pct' for mode 3
+
+// ── Slider wiring ─────────────────────────────────────────────
+function wireSlider(sldId, inpId, lblId, suffix, decimals) {
+  var sld = document.getElementById(sldId);
+  var inp = document.getElementById(inpId);
+  var lbl = document.getElementById(lblId);
+  function setLabel(v) {
+    lbl.textContent = decimals === 0
+      ? parseFloat(v).toFixed(0) + suffix
+      : parseFloat(v).toFixed(decimals) + suffix;
+  }
+  sld.addEventListener('input', function () {
+    inp.value = decimals === 0 ? parseFloat(this.value).toFixed(0) : this.value;
+    setLabel(this.value);
+  });
+  inp.addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    if (!isNaN(v)) {
+      sld.value = Math.min(Math.max(v, parseFloat(sld.min)), parseFloat(sld.max));
+      setLabel(v);
+    }
+  });
+}
+
+// Defaults
+document.getElementById('inp-risk').value = '1';
+document.getElementById('inp-lev').value  = '5';
+document.getElementById('m1-sl-pct').value = '0.54';
+
+wireSlider('sld-risk', 'inp-risk', 'lbl-risk', '%', 1);
+wireSlider('sld-lev',  'inp-lev',  'lbl-lev',  '×', 0);
+wireSlider('sld-sl',   'm1-sl-pct','lbl-sl',   '%', 2);
+
+document.getElementById('sld-risk').value = '1';
+document.getElementById('sld-lev').value  = '5';
+document.getElementById('sld-sl').value   = '0.54';
+document.getElementById('lbl-risk').textContent = '1.0%';
+document.getElementById('lbl-lev').textContent  = '5×';
+document.getElementById('lbl-sl').textContent   = '0.54%';
+
+// ── Mode switching ─────────────────────────────────────────────
+function switchMode(n) {
+  currentMode = n;
+  [1,2,3].forEach(function(i) {
+    document.getElementById('tab'+i).classList.toggle('active', i===n);
+    document.getElementById('mode'+i+'-fields').classList.toggle('active', i===n);
+  });
+  hideResults();
+}
+
+// ── SL input mode (mode 3) ─────────────────────────────────────
+function setSLMode(mode) {
+  slInputMode = mode;
+  document.getElementById('sl-btn-price').classList.toggle('active', mode==='price');
+  document.getElementById('sl-btn-pct').classList.toggle('active', mode==='pct');
+  document.getElementById('sl-price-wrap').classList.toggle('hidden', mode!=='price');
+  document.getElementById('sl-pct-wrap').classList.toggle('hidden', mode!=='pct');
+}
+
+// ── Formatting ─────────────────────────────────────────────────
+function fmtUSD(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtPrice(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:4 });
+}
+function fmtPct(n) {
+  return n.toFixed(4) + '%';
+}
+
+// ── Risk bar ───────────────────────────────────────────────────
+function updateRiskBar(riskPct) {
+  var barPct = Math.min((riskPct / 5) * 100, 100);
+  var fill   = document.getElementById('risk-bar-fill');
+  var lbl    = document.getElementById('lbl-risk-level');
+  fill.style.width = barPct + '%';
+  var color, text;
+  if      (riskPct <= 1) { color = '#30e0a0'; text = 'Conservative'; }
+  else if (riskPct <= 2) { color = '#a0d060'; text = 'Moderate';     }
+  else if (riskPct <= 3) { color = '#f0c040'; text = 'Elevated';     }
+  else if (riskPct <= 5) { color = '#e07030'; text = 'High Risk';    }
+  else                   { color = '#e04060'; text = 'Very High Risk'; }
+  fill.style.background = color;
+  lbl.textContent = text;
+  lbl.style.color = color;
+}
+
+// ── Show/hide helpers ──────────────────────────────────────────
+function hideResults() {
+  document.getElementById('results-inner').style.display = 'none';
+  document.getElementById('empty-state').style.display   = 'block';
+}
+
+function showResults() {
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('results-inner').style.display = 'block';
+}
+
+function setResultSections(showRR, showPrices) {
+  document.getElementById('rr-results').classList.toggle('hidden', !showRR);
+  document.getElementById('price-results').classList.toggle('hidden', !showPrices);
+}
+
+// ── Parse R:R string (e.g. "1:1.5" or "1.5") ─────────────────
+function parseRR(str) {
+  if (!str) return NaN;
+  str = str.trim();
+  if (str.indexOf(':') !== -1) {
+    var parts = str.split(':');
+    var risk   = parseFloat(parts[0]);
+    var reward = parseFloat(parts[1]);
+    if (isNaN(risk) || isNaN(reward) || risk === 0) return NaN;
+    return reward / risk; // returns reward multiple (e.g. 1.5 means 1.5× risk)
+  }
+  return parseFloat(str);
+}
+
+// ── Error shake ────────────────────────────────────────────────
+function shakeBtn(msg) {
+  var btn = document.getElementById('btn-calc');
+  btn.classList.add('shake');
+  btn.textContent = '⚠ ' + msg;
+  setTimeout(function () {
+    btn.classList.remove('shake');
+    btn.textContent = '⚡ Calculate';
+  }, 2200);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAIN CALCULATE
+// ══════════════════════════════════════════════════════════════
+function calculate() {
+  var balance  = parseFloat(document.getElementById('inp-balance').value);
+  var riskPct  = parseFloat(document.getElementById('inp-risk').value);
+  var leverage = parseFloat(document.getElementById('inp-lev').value);
+
+  if (isNaN(balance) || balance <= 0 || isNaN(riskPct) || riskPct <= 0 || isNaN(leverage) || leverage < 1) {
+    shakeBtn('Fill Balance, Risk & Leverage'); return;
+  }
+
+  if (currentMode === 1) calcMode1(balance, riskPct, leverage);
+  else if (currentMode === 2) calcMode2(balance, riskPct, leverage);
+  else calcMode3(balance, riskPct, leverage);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODE 1: Position Size Only (Bitfunded-adjusted)
+//
+// Standard:   position = (balance × risk%) / SL%
+// Problem:    fees will push actual loss = rawLoss × 1.1433
+// Fix:        we want (adjustedPosition × SL%) + (adjustedPosition × FEE_FACTOR) = maxLoss
+//             adjustedPosition × (SL%/100 + FEE_FACTOR) = maxLoss
+//             adjustedPosition = maxLoss / (SL%/100 + FEE_FACTOR)
+// ══════════════════════════════════════════════════════════════
+function calcMode1(balance, riskPct, leverage) {
+  var slPct = parseFloat(document.getElementById('m1-sl-pct').value);
+  if (isNaN(slPct) || slPct <= 0) { shakeBtn('Enter Stop Loss %'); return; }
+
+  var maxLoss    = balance * (riskPct / 100);
+  var slFrac     = slPct / 100;
+
+  // Adjusted position so that rawLoss + fees = maxLoss
+  var position   = maxLoss / (slFrac + FEE_FACTOR);
+  var rawLoss    = position * slFrac;
+  var feeAmt     = position * FEE_FACTOR;
+  var estLoss    = rawLoss + feeAmt;
+  var margin     = position / leverage;
+
+  // Display
+  document.getElementById('out-position').textContent = fmtUSD(position);
+  document.getElementById('out-margin').textContent   = fmtUSD(margin);
+  document.getElementById('out-raw-loss').textContent = fmtUSD(rawLoss);
+  document.getElementById('out-est-loss').textContent = fmtUSD(estLoss);
+
+  setResultSections(false, false);
+  updateRiskBar(riskPct);
+
+  document.getElementById('f1').innerHTML =
+    '<b>Max Planned Loss</b> = ' + fmtUSD(balance) + ' × ' + riskPct + '% = <span class="num">' + fmtUSD(maxLoss) + '</span>';
+  document.getElementById('f2').innerHTML =
+    '<b>Adj. Position</b> = MaxLoss ÷ (SL% + Fee Factor) = ' + fmtUSD(maxLoss) + ' ÷ (' + fmtPct(slPct) + ' + 0.0865%) = <span class="num">' + fmtUSD(position) + '</span>';
+  document.getElementById('f3').innerHTML =
+    '<b>Margin</b> = ' + fmtUSD(position) + ' ÷ ' + leverage + '× = <span class="num">' + fmtUSD(margin) + '</span>';
+  document.getElementById('f4').innerHTML =
+    '<b>Fee Est.</b> = ' + fmtUSD(position) + ' × 0.0865% = <span class="num">' + fmtUSD(feeAmt) + '</span> overhead';
+  document.getElementById('f5').innerHTML =
+    '✓ Est. Total Loss = ' + fmtUSD(rawLoss) + ' + ' + fmtUSD(feeAmt) + ' = <span class="num">' + fmtUSD(estLoss) + '</span> ≤ Max Loss ✓';
+
+  showResults();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODE 2: Price Mode
+// User enters entry, SL price, TP1 price, TP2 price
+// Calculate position size and ADJUSTED R:R after fees
+//
+// rawSLLoss   = position × SL%
+// estTotalLoss= rawSLLoss + position × FEE_FACTOR
+//             = position × (SL% + FEE_FACTOR)
+// We set estTotalLoss = maxLoss → same formula as mode 1
+//
+// Adjusted R:R for TP:
+//   grossTPgain = position × TP%
+//   netTPgain   = grossTPgain - feeAmt   (fees paid also on winning side)
+//   adjRR       = netTPgain / estTotalLoss
+// ══════════════════════════════════════════════════════════════
+function calcMode2(balance, riskPct, leverage) {
+  var entry = parseFloat(document.getElementById('m2-entry').value);
+  var slPx  = parseFloat(document.getElementById('m2-sl').value);
+  var tp1Px = parseFloat(document.getElementById('m2-tp1').value);
+  var tp2Px = parseFloat(document.getElementById('m2-tp2').value);
+
+  if (isNaN(entry) || entry <= 0) { shakeBtn('Enter Entry Price'); return; }
+  if (isNaN(slPx)  || slPx  <= 0) { shakeBtn('Enter Stop Loss Price'); return; }
+  if (isNaN(tp1Px) || tp1Px <= 0) { shakeBtn('Enter TP1 Price'); return; }
+
+  // Determine direction
+  var isLong = slPx < entry;
+  var slDist = Math.abs(entry - slPx);
+  var slPct  = slDist / entry; // as fraction
+
+  if (slPct <= 0) { shakeBtn('SL must differ from entry'); return; }
+
+  var maxLoss  = balance * (riskPct / 100);
+  var position = maxLoss / (slPct + FEE_FACTOR);
+  var rawLoss  = position * slPct;
+  var feeAmt   = position * FEE_FACTOR;
+  var estLoss  = rawLoss + feeAmt;
+  var margin   = position / leverage;
+
+  // TP R:R calculations
+  var tp1Dist = Math.abs(tp1Px - entry);
+  var tp1Pct  = tp1Dist / entry;
+  var tp1GrossGain = position * tp1Pct;
+  var tp1NetGain   = tp1GrossGain - (position * FEE_FACTOR); // fees on winning side too
+  var tp1AdjRR     = tp1NetGain / estLoss;
+
+  var tp2AdjRR = NaN, tp2GrossGain = NaN, tp2NetGain = NaN;
+  var tp2Dist = 0, tp2Pct = 0;
+  if (!isNaN(tp2Px) && tp2Px > 0) {
+    tp2Dist = Math.abs(tp2Px - entry);
+    tp2Pct  = tp2Dist / entry;
+    tp2GrossGain = position * tp2Pct;
+    tp2NetGain   = tp2GrossGain - (position * FEE_FACTOR);
+    tp2AdjRR     = tp2NetGain / estLoss;
+  }
+
+  // Display
+  document.getElementById('out-position').textContent = fmtUSD(position);
+  document.getElementById('out-margin').textContent   = fmtUSD(margin);
+  document.getElementById('out-raw-loss').textContent = fmtUSD(rawLoss);
+  document.getElementById('out-est-loss').textContent = fmtUSD(estLoss);
+
+  document.getElementById('out-sl-pct').textContent = fmtPct(slPct * 100);
+  document.getElementById('out-rr1').textContent    = '1 : ' + tp1AdjRR.toFixed(2);
+  document.getElementById('out-rr2').textContent    = isNaN(tp2AdjRR) ? 'N/A' : '1 : ' + tp2AdjRR.toFixed(2);
+
+  setResultSections(true, false);
+  updateRiskBar(riskPct);
+
+  document.getElementById('f1').innerHTML =
+    '<b>Max Planned Loss</b> = ' + fmtUSD(balance) + ' × ' + riskPct + '% = <span class="num">' + fmtUSD(maxLoss) + '</span>';
+  document.getElementById('f2').innerHTML =
+    '<b>SL%</b> = |' + entry + ' − ' + slPx + '| ÷ ' + entry + ' = <span class="num">' + fmtPct(slPct*100) + '</span>';
+  document.getElementById('f3').innerHTML =
+    '<b>Adj. Position</b> = ' + fmtUSD(maxLoss) + ' ÷ (SL% + Fee) = <span class="num">' + fmtUSD(position) + '</span>  |  Margin = <span class="num">' + fmtUSD(margin) + '</span>';
+  document.getElementById('f4').innerHTML =
+    '<b>Fee Est.</b> = ' + fmtUSD(position) + ' × 0.0865% = <span class="num">' + fmtUSD(feeAmt) + '</span>  |  Est. Total Loss = <span class="num">' + fmtUSD(estLoss) + '</span>';
+  document.getElementById('f5').innerHTML =
+    '✓ TP1 Net Gain = ' + fmtUSD(tp1GrossGain) + ' − fee = <span class="num">' + fmtUSD(tp1NetGain) + '</span>  →  Adj. R:R = <span class="num">1:' + tp1AdjRR.toFixed(2) + '</span>';
+
+  showResults();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODE 3: R:R Mode
+// User enters entry, R:R targets, and SL (price or %)
+// Goal: find TP prices that deliver the INTENDED R:R after fees
+//
+// intendedRR = reward/risk
+// We want: netGain / estLoss = intendedRR
+//   netGain  = position × TP% − position × FEE_FACTOR
+//   estLoss  = position × (SL% + FEE_FACTOR)
+//
+//   (position × TP% − position × FEE_FACTOR) / (position × (SL% + FEE_FACTOR)) = intendedRR
+//   (TP% − FEE_FACTOR) / (SL% + FEE_FACTOR) = intendedRR
+//   TP% = intendedRR × (SL% + FEE_FACTOR) + FEE_FACTOR
+//   TP price = entry × (1 + TP%)   [for long]
+//            = entry × (1 − TP%)   [for short — but we'll assume long; user can invert]
+//
+// For the SL: we also adjust so that if user enters SL price/pct that is their 
+// "intention", we back-calculate the correct SL price that makes the estLoss equal 
+// to maxLoss. Then TP is derived from that adjusted SL.
+//
+// However, to keep it intuitive: we use the user's SL as-is for the raw SL%,
+// compute position from maxLoss / (SL% + FEE_FACTOR), then compute TP prices
+// that deliver intended R:R net of fees.
+// ══════════════════════════════════════════════════════════════
+function calcMode3(balance, riskPct, leverage) {
+  var entry  = parseFloat(document.getElementById('m3-entry').value);
+  if (isNaN(entry) || entry <= 0) { shakeBtn('Enter Entry Price'); return; }
+
+  var slPctFrac;
+  if (slInputMode === 'price') {
+    var slPx = parseFloat(document.getElementById('m3-sl-price').value);
+    if (isNaN(slPx) || slPx <= 0) { shakeBtn('Enter Stop Loss Price'); return; }
+    slPctFrac = Math.abs(entry - slPx) / entry;
+  } else {
+    var slPctRaw = parseFloat(document.getElementById('m3-sl-pct').value);
+    if (isNaN(slPctRaw) || slPctRaw <= 0) { shakeBtn('Enter SL % Distance'); return; }
+    slPctFrac = slPctRaw / 100;
+  }
+
+  if (slPctFrac <= 0) { shakeBtn('SL must differ from entry'); return; }
+
+  var rr1str = document.getElementById('m3-rr1').value;
+  var rr2str = document.getElementById('m3-rr2').value;
+  var rr1 = parseRR(rr1str);
+  if (isNaN(rr1) || rr1 <= 0) { shakeBtn('Enter valid TP1 R:R (e.g. 1:1.5)'); return; }
+
+  var maxLoss  = balance * (riskPct / 100);
+  var position = maxLoss / (slPctFrac + FEE_FACTOR);
+  var rawLoss  = position * slPctFrac;
+  var feeAmt   = position * FEE_FACTOR;
+  var estLoss  = rawLoss + feeAmt;
+  var margin   = position / leverage;
+
+  // Compute SL price (assuming long; if short, SL is above entry — same math either way, just direction)
+  // We'll detect direction: if slInputMode=price, direction from price; if pct, assume long
+  var isLong = true;
+  if (slInputMode === 'price') {
+    var slPxVal = parseFloat(document.getElementById('m3-sl-price').value);
+    isLong = slPxVal < entry;
+  }
+
+  var slPrice = isLong ? entry * (1 - slPctFrac) : entry * (1 + slPctFrac);
+
+  // TP% to achieve intended net R:R:
+  // TP% = rr × (SL% + FEE_FACTOR) + FEE_FACTOR
+  var tp1Pct    = rr1 * (slPctFrac + FEE_FACTOR) + FEE_FACTOR;
+  var tp1Price  = isLong ? entry * (1 + tp1Pct) : entry * (1 - tp1Pct);
+  var tp1Gross  = position * tp1Pct;
+  var tp1Net    = tp1Gross - feeAmt;
+  var tp1NetRR  = tp1Net / estLoss;
+  // Gross R:R (what chart shows without fee adjustment)
+  var tp1GrossRR = tp1Pct / slPctFrac;
+
+  var tp2Price = NaN, tp2NetRR = NaN, tp2GrossRR = NaN;
+  var rr2 = parseRR(rr2str);
+  if (!isNaN(rr2) && rr2 > 0) {
+    var tp2Pct   = rr2 * (slPctFrac + FEE_FACTOR) + FEE_FACTOR;
+    tp2Price     = isLong ? entry * (1 + tp2Pct) : entry * (1 - tp2Pct);
+    var tp2Gross = position * tp2Pct;
+    var tp2Net   = tp2Gross - feeAmt;
+    tp2NetRR     = tp2Net / estLoss;
+    tp2GrossRR   = tp2Pct / slPctFrac;
+  }
+
+  // Display
+  document.getElementById('out-position').textContent = fmtUSD(position);
+  document.getElementById('out-margin').textContent   = fmtUSD(margin);
+  document.getElementById('out-raw-loss').textContent = fmtUSD(rawLoss);
+  document.getElementById('out-est-loss').textContent = fmtUSD(estLoss);
+
+  document.getElementById('out-sl-price').textContent   = fmtPrice(slPrice);
+  document.getElementById('out-tp1-price').textContent  = fmtPrice(tp1Price);
+  document.getElementById('out-tp2-price').textContent  = isNaN(tp2Price) ? 'N/A' : fmtPrice(tp2Price);
+  document.getElementById('out-tp1-gross-rr').textContent = '1 : ' + tp1GrossRR.toFixed(2);
+  document.getElementById('out-tp2-gross-rr').textContent = isNaN(tp2GrossRR) ? 'N/A' : '1 : ' + tp2GrossRR.toFixed(2);
+
+  setResultSections(false, true);
+  updateRiskBar(riskPct);
+
+  document.getElementById('f1').innerHTML =
+    '<b>Max Loss</b> = ' + fmtUSD(balance) + ' × ' + riskPct + '% = <span class="num">' + fmtUSD(maxLoss) + '</span>  |  SL% = <span class="num">' + fmtPct(slPctFrac*100) + '</span>';
+  document.getElementById('f2').innerHTML =
+    '<b>Adj. Position</b> = ' + fmtUSD(maxLoss) + ' ÷ (SL% + 0.0865%) = <span class="num">' + fmtUSD(position) + '</span>  |  Margin = <span class="num">' + fmtUSD(margin) + '</span>';
+  document.getElementById('f3').innerHTML =
+    '<b>Fee Est.</b> = ' + fmtUSD(position) + ' × 0.0865% = <span class="num">' + fmtUSD(feeAmt) + '</span>  |  Est. Total Loss = <span class="num">' + fmtUSD(estLoss) + '</span>';
+  document.getElementById('f4').innerHTML =
+    '<b>TP1% needed</b> = ' + rr1.toFixed(2) + ' × (SL% + Fee%) + Fee% = <span class="num">' + fmtPct(tp1Pct*100) + '</span>  →  Price = <span class="num">' + fmtPrice(tp1Price) + '</span>';
+  document.getElementById('f5').innerHTML =
+    '✓ Verify TP1: Net Gain = ' + fmtUSD(tp1Net) + ' ÷ Est.Loss ' + fmtUSD(estLoss) + ' = <span class="num">1:' + tp1NetRR.toFixed(2) + '</span> ≈ ' + rr1str + ' ✓';
+
+  showResults();
+}
+
+// ── Reset ──────────────────────────────────────────────────────
+function resetAll() {
+  // Common
+  document.getElementById('inp-balance').value = '';
+  document.getElementById('inp-risk').value    = '1';
+  document.getElementById('inp-lev').value     = '5';
+  document.getElementById('sld-risk').value    = '1';
+  document.getElementById('sld-lev').value     = '5';
+  document.getElementById('lbl-risk').textContent = '1.0%';
+  document.getElementById('lbl-lev').textContent  = '5×';
+  // M1
+  document.getElementById('m1-sl-pct').value = '0.54';
+  document.getElementById('sld-sl').value    = '0.54';
+  document.getElementById('lbl-sl').textContent = '0.54%';
+  // M2
+  ['m2-entry','m2-sl','m2-tp1','m2-tp2'].forEach(function(id){ document.getElementById(id).value=''; });
+  // M3
+  ['m3-entry','m3-sl-price','m3-sl-pct','m3-rr1','m3-rr2'].forEach(function(id){ document.getElementById(id).value=''; });
+
+  hideResults();
+}
+
+// Enter key
+document.addEventListener('keydown', function(e){ if(e.key==='Enter') calculate(); });
+</script>
+</body>
+</html>
