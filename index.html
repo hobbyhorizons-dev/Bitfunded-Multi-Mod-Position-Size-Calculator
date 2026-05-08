@@ -890,12 +890,15 @@ function getRiskLevel(pct) {
 //   4,600  – 9,199      → $5,000 tier    (floor =   5k − 8% = $4,600)
 //   < 4,600             → treat as $5,000 tier (fallback)
 function detectTier(balance) {
-  if      (balance >= 138000) return 150000;
-  else if (balance >=  92000) return 100000;
-  else if (balance >=  46000) return  50000;
-  else if (balance >=  23000) return  25000;
-  else if (balance >=  13800) return  15000;
-  else if (balance >=   9200) return  10000;
+  // Cutoffs are midpoints between consecutive tier starting balances.
+  // 150,000 is the highest tier — any balance above it still maps to 150,000
+  // because that is the account's initial starting balance regardless of profit.
+  if      (balance >= 125000) return 150000;
+  else if (balance >=  75000) return 100000;
+  else if (balance >=  37500) return  50000;
+  else if (balance >=  20000) return  25000;
+  else if (balance >=  12500) return  15000;
+  else if (balance >=   7500) return  10000;
   else                        return   5000;
 }
 
