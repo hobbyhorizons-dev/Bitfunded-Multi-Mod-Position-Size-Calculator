@@ -510,11 +510,11 @@ input[type=range]::-moz-range-thumb{
       <div class="field">
         <label>Leverage <span class="hint">Multiplier</span></label>
         <div class="input-wrap">
-          <input type="number" id="inp-lev" placeholder="e.g. 5" min="1" max="500" step="1">
+          <input type="number" id="inp-lev" placeholder="e.g. 5" min="1" max="5" step="1">
           <span class="input-unit">×</span>
         </div>
         <div class="slider-row">
-          <input type="range" id="sld-lev" min="1" max="125" step="1">
+          <input type="range" id="sld-lev" min="1" max="5" step="1">
           <span class="slider-val" id="lbl-lev">—</span>
         </div>
       </div>
@@ -732,11 +732,11 @@ input[type=range]::-moz-range-thumb{
       <div class="challenge-info">
         <div class="ci-title">Challenge Max Loss Analysis</div>
         <div class="ci-row">
-          <span class="ci-label">2-Step Challenge max loss (8% of initial balance)</span>
+          <span class="ci-label">2-Step &amp; Live — Max Loss (8% of initial tier balance, fixed)</span>
           <span class="ci-val" id="ci-2step-max">—</span>
         </div>
         <div class="ci-row">
-          <span class="ci-label">1-Step Challenge max loss (6% of initial balance)</span>
+          <span class="ci-label">1-Step — Max Loss (6% of initial tier balance, fixed)</span>
           <span class="ci-val" id="ci-1step-max">—</span>
         </div>
         <div class="ci-row">
@@ -873,6 +873,32 @@ function getRiskLevel(pct) {
   else                  return { label: 'Extreme Risk ⚠',  color: '#f87171', barPct: 100 };
 }
 
+// ── Tier detection ─────────────────────────────────────────────
+// User enters their CURRENT balance (which may be higher than initial
+// if they made profits). The tool detects which Bitfunded tier they
+// are on from the entered balance, then calculates the fixed max-loss
+// floor from that TIER's initial starting balance — not from whatever
+// balance the user typed.
+//
+// Tier ranges (entered balance → tier starting balance):
+//   ≥ 138,000           → $150,000 tier  (floor = 150k − 8% = $138,000)
+//   92,000 – 137,999    → $100,000 tier  (floor = 100k − 8% = $92,000)
+//   46,000 – 91,999     → $50,000 tier   (floor =  50k − 8% = $46,000)
+//   23,000 – 45,999     → $25,000 tier   (floor =  25k − 8% = $23,000)
+//   13,800 – 22,999     → $15,000 tier   (floor =  15k − 8% = $13,800)
+//   9,200  – 13,799     → $10,000 tier   (floor =  10k − 8% = $9,200)
+//   4,600  – 9,199      → $5,000 tier    (floor =   5k − 8% = $4,600)
+//   < 4,600             → treat as $5,000 tier (fallback)
+function detectTier(balance) {
+  if      (balance >= 138000) return 150000;
+  else if (balance >=  92000) return 100000;
+  else if (balance >=  46000) return  50000;
+  else if (balance >=  23000) return  25000;
+  else if (balance >=  13800) return  15000;
+  else if (balance >=   9200) return  10000;
+  else                        return   5000;
+}
+
 function updateRiskBar(riskPct, balance, estLoss) {
   var lvl  = getRiskLevel(riskPct);
   var fill = document.getElementById('risk-bar-fill');
@@ -886,27 +912,39 @@ function updateRiskBar(riskPct, balance, estLoss) {
   sub.textContent       = riskPct.toFixed(2) + '% risk / trade';
   sub.style.color       = lvl.color;
 
-  // Challenge info
-  var maxLoss   = balance * (riskPct / 100);
-  var max2step  = balance * 0.08;
-  var max1step  = balance * 0.06;
-  var hits2     = max2step / maxLoss;
-  var hits1     = max1step / maxLoss;
+  // Detect which tier this account belongs to based on entered balance.
+  // tierBalance = the INITIAL starting balance of that tier — always fixed.
+  var tierBalance  = detectTier(balance);
+  var perTradeLoss = balance * (riskPct / 100);  // loss per SL hit (uses entered balance for trade calc)
 
-  document.getElementById('ci-2step-max').textContent   = fmtUSD(max2step);
-  document.getElementById('ci-1step-max').textContent   = fmtUSD(max1step);
-  document.getElementById('ci-2step-hits').textContent  = fmtN(hits2, 1) + ' SL hits';
-  document.getElementById('ci-1step-hits').textContent  = fmtN(hits1, 1) + ' SL hits';
+  // Fixed max-loss amounts: always 8% / 6% of the TIER starting balance.
+  // These numbers NEVER change even if the account grows above the tier start.
+  var max2step   = tierBalance * 0.08;   // e.g. $150k × 8% = $12,000
+  var max1step   = tierBalance * 0.06;   // e.g. $150k × 6% = $9,000
+  var floor2step = tierBalance - max2step; // hard lower boundary: $138,000
+  var floor1step = tierBalance - max1step; // hard lower boundary: $141,000
+
+  var hits2 = max2step / perTradeLoss;
+  var hits1 = max1step / perTradeLoss;
+
+  document.getElementById('ci-2step-max').textContent  = fmtUSD(max2step);
+  document.getElementById('ci-1step-max').textContent  = fmtUSD(max1step);
+  document.getElementById('ci-2step-hits').textContent = fmtN(hits2, 1) + ' SL hits';
+  document.getElementById('ci-1step-hits').textContent = fmtN(hits1, 1) + ' SL hits';
 
   document.getElementById('ci-stmt2').innerHTML =
-    '2-Step: At ' + riskPct.toFixed(2) + '% risk, from initial balance you need approx ' +
-    '<span>' + fmtN(hits2, 1) + ' consecutive SL hits</span>' +
-    ' to reach the 8% maximum loss limit.';
+    '2-Step &amp; Live (' + fmtUSD(tierBalance) + ' tier): max loss is fixed at ' +
+    '<span>' + fmtUSD(max2step) + '</span>. ' +
+    'Account must never drop below <span>' + fmtUSD(floor2step) + '</span>. ' +
+    'This floor is locked to the initial tier balance and does NOT move up with profits. ' +
+    'At ' + riskPct.toFixed(2) + '% risk/trade ≈ <span>' + fmtN(hits2, 1) + ' consecutive SL hits</span> to breach.';
 
   document.getElementById('ci-stmt1').innerHTML =
-    '1-Step: At ' + riskPct.toFixed(2) + '% risk, from initial balance you need approx ' +
-    '<span>' + fmtN(hits1, 1) + ' consecutive SL hits</span>' +
-    ' to reach the 6% maximum loss limit.';
+    '1-Step (' + fmtUSD(tierBalance) + ' tier): max loss is fixed at ' +
+    '<span>' + fmtUSD(max1step) + '</span>. ' +
+    'Account must never drop below <span>' + fmtUSD(floor1step) + '</span>. ' +
+    'This floor is locked to the initial tier balance and does NOT move up with profits. ' +
+    'At ' + riskPct.toFixed(2) + '% risk/trade ≈ <span>' + fmtN(hits1, 1) + ' consecutive SL hits</span> to breach.';
 }
 
 // ── Show/hide helpers ──────────────────────────────────────
@@ -953,7 +991,7 @@ function shakeBtn(msg) {
 function calculate() {
   var balance  = parseFloat(document.getElementById('inp-balance').value);
   var riskPct  = parseFloat(document.getElementById('inp-risk').value);
-  var leverage = parseFloat(document.getElementById('inp-lev').value);
+  var leverage = Math.min(parseFloat(document.getElementById('inp-lev').value), 5);
   if (isNaN(balance) || balance <= 0 || isNaN(riskPct) || riskPct <= 0 || isNaN(leverage) || leverage < 1) {
     shakeBtn('Fill Balance, Risk & Leverage'); return;
   }
