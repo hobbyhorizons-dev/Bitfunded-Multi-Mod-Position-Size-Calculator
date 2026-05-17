@@ -123,9 +123,9 @@ body::after{
   background:var(--surface);
   border:1.5px solid var(--border2);
   border-radius:14px;
-  padding:14px 20px 12px;
+  padding:16px 22px 14px;
   position:relative;overflow:hidden;
-  width:100%;
+  width:100%;max-width:680px;
 }
 /* Subtle top shimmer line matching the reference border glow */
 .tool-title-wrap::before{
@@ -136,8 +136,8 @@ body::after{
 /* LARGE gradient title — blue → teal, matching reference image */
 .tool-title-main{
   font-family:'Syne',sans-serif;font-weight:800;
-  font-size:clamp(20px, 2.8vw, 32px);
-  line-height:1.18;letter-spacing:-.02em;
+  font-size:clamp(18px, 2.4vw, 28px);
+  line-height:1.22;letter-spacing:-.018em;
   background:linear-gradient(105deg, #1a8fdf 0%, #19c6b8 60%, #16e0c8 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
   background-clip:text;
@@ -623,7 +623,7 @@ input[type=range]::-moz-range-thumb{
     <div class="logo-area">
       <div class="tool-title-wrap">
         <!-- Main large title: blue → teal gradient, big and bold -->
-        <div class="tool-title-main">Multi enter mode modified<br>Position Size Calculator<br>for Bitfunded Users</div>
+        <div class="tool-title-main">Multi Enter Mode Position Size Calculator<br>for Bitfunded Users</div>
         <!-- Subtitle disclaimer -->
         <div class="tool-title-sub">Estimates &amp; adjusts for fees &amp; slippage when using Market Orders for Stop Loss &nbsp;·&nbsp; Unofficial community testing tool &nbsp;·&nbsp; Not affiliated with Bitfunded</div>
         <!-- Community badge — matches the reference image lower badge -->
@@ -848,6 +848,15 @@ input[type=range]::-moz-range-thumb{
           <input type="number" id="m3-sl-pct" placeholder="e.g. 0.54" step="any" min="0.01" max="100">
           <span class="input-unit">%</span>
         </div>
+        <!-- Trade direction — only needed when SL entered as % (no price to infer from) -->
+        <div style="display:flex;gap:5px;margin-top:8px;" id="direction-toggle">
+          <button class="sl-toggle-btn active" id="dir-btn-long" onclick="setTradeDir('long')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="18 15 12 9 6 15"/></svg>Long (SL below entry)
+          </button>
+          <button class="sl-toggle-btn" id="dir-btn-short" onclick="setTradeDir('short')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="6 9 12 15 18 9"/></svg>Short (SL above entry)
+          </button>
+        </div>
       </div>
       <div class="sdiv">Planned R:R Ratios</div>
       <div class="fee-notice">
@@ -1055,6 +1064,7 @@ input[type=range]::-moz-range-thumb{
       <button class="manual-nav-btn" onclick="showSection(7)">Challenge Floors</button>
       <button class="manual-nav-btn" onclick="showSection(8)">Reading Results</button>
       <button class="manual-nav-btn" onclick="showSection(9)">Glossary</button>
+      <button class="manual-nav-btn" onclick="showSection(10)">Notes &amp; Remarks</button>
     </div>
 
     <div class="manual-body">
@@ -1293,6 +1303,32 @@ Est. Total Loss   = $323.23 + $51.77 = $375.00  ✓</div>
         <div class="m-disc">This tool is shared for community testing purposes. It is not affiliated with Bitfunded. Results are estimates. Not financial advice. Use under your own responsibility.</div>
       </div>
 
+      <!-- 10 — NOTES & REMARKS -->
+      <div class="m-section" id="ms-10">
+        <div class="m-h1">Notes &amp; Remarks</div>
+        <div class="m-callout info"><span class="m-ci">📌</span><div>This section is reserved for additional observations, known limitations, and community-reported notes gathered through ongoing testing. It will be updated as new information is confirmed.</div></div>
+
+        <div class="m-h2">Known Limitations</div>
+        <ul class="m-ul">
+          <li>The 0.0865% overhead factor was derived from a single calibration trade on ETH/USDT perpetuals. Other assets, different session times, and varying position sizes may produce different overhead.</li>
+          <li>This tool does not track, display, or calculate the Bitfunded Daily Maximum Loss limit. Always monitor daily drawdown independently on the Bitfunded dashboard.</li>
+          <li>Tier detection uses midpoint cutoffs between standard Bitfunded account sizes. If your balance is near a midpoint boundary, verify your actual tier manually.</li>
+          <li>Slippage estimates will differ in low-liquidity conditions, major news events, or during market gaps. The factor is a planning reference — not a real-time cost guarantee.</li>
+        </ul>
+
+        <div class="m-h2">General Remarks</div>
+        <ul class="m-ul">
+          <li>Always cross-reference calculated position sizes with your own risk management rules before entering a trade.</li>
+          <li>The tool is designed for Bitfunded futures with a maximum 5× leverage cap. Using it for other platforms with different leverage structures will require adaptation.</li>
+          <li>Results are estimates. Treat them as a planning aid, not as an exact execution guarantee.</li>
+        </ul>
+
+        <div class="m-h2">Contact Developer</div>
+        <div class="m-callout ok"><span class="m-ci">✉</span><div>For questions, error reports, suggestions, or community feedback regarding this tool, you can contact the developer at:<br><br><strong>hobby.horizons@gmail.com</strong><br><br>This is a community project shared freely. Response times may vary.</div></div>
+
+        <div class="m-disc">This tool is shared for community testing purposes. It is not affiliated with Bitfunded. Results are estimates. Not financial advice. Use under your own responsibility.</div>
+      </div>
+
     </div><!-- /manual-body -->
   </div><!-- /manual-panel -->
 </div><!-- /manual-overlay -->
@@ -1319,10 +1355,10 @@ Est. Total Loss   = $323.23 + $51.77 = $375.00  ✓</div>
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(56,189,248,.7),transparent);"></div>
         <div style="font-family:'DM Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Current Version</div>
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
-          <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--accent);line-height:1;">V3</div>
+          <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--accent);line-height:1;">V 3.1</div>
           <div>
-            <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--text);">15 / 05 / 2026</div>
-            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;">11:00 AM UTC</div>
+            <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--text);">17 / 05 / 2025</div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;">02:30 UTC</div>
           </div>
         </div>
       </div>
@@ -1333,7 +1369,7 @@ Est. Total Loss   = $323.23 + $51.77 = $375.00  ✓</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid var(--border);">
             <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--muted);">Tool name</span>
-            <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text2);text-align:right;max-width:55%;">Modified Position Size Calculator</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text2);text-align:right;max-width:60%;">Multi Enter Mode Position Size Calculator for Bitfunded Users</span>
           </div>
           <div style="display:flex;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid var(--border);">
             <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--muted);">Type</span>
@@ -1358,20 +1394,13 @@ Est. Total Loss   = $323.23 + $51.77 = $375.00  ✓</div>
         </div>
       </div>
 
-      <!-- What's in V3 -->
+      <!-- What's in V3.1 -->
       <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
-        <div style="font-family:'DM Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">V3 — What's New (15/05/2026)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">V 3.1 — Changes (17/05/2025 · 02:30 UTC)</div>
         <ul style="margin:0 0 0 16px;padding:0;display:flex;flex-direction:column;gap:5px;">
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Large typographic title redesign (blue → teal gradient)</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Premium SVG mode icons for all three calculation modes</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Built-in User Manual accessible from header (10 sections)</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">About panel with version and update info</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Fixed challenge tier floor detection (midpoint cutoffs)</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Leverage hard-capped at 5× (Bitfunded platform maximum)</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">DM Mono numerals for maximum digit clarity</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Light &amp; Dark theme toggle</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Removed all Bitfunded branding / logo per community guidelines</li>
-          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Daily Max Loss notice and full disclaimer added</li>
+          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Tool name corrected to "Multi Enter Mode Position Size Calculator for Bitfunded Users" in header and About</li>
+          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">Header title card dimensions refined for cleaner proportional appearance</li>
+          <li style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);line-height:1.6;">R:R Mode — added Long / Short trade direction selector when entering stop loss by % distance</li>
         </ul>
       </div>
 
@@ -1395,6 +1424,7 @@ var FEE_OVERHEAD_RATIO = 0.1433;   // 14.33% overhead — calibrated from one re
 
 var currentMode = 1;
 var slInputMode = 'price';
+var tradeDir    = 'long'; // 'long' or 'short' — used when SL entered as % distance
 
 // ── Theme toggle ─────────────────────────────────────────
 function toggleTheme() {
@@ -1463,7 +1493,14 @@ function setSLMode(mode) {
   document.getElementById('sl-pct-wrap').classList.toggle('hidden', mode!=='pct');
 }
 
-// ── Formatting ─────────────────────────────────────────────
+// ── Trade direction (Mode 3 SL% input) ────────────────────
+function setTradeDir(dir) {
+  tradeDir = dir;
+  document.getElementById('dir-btn-long').classList.toggle('active',  dir === 'long');
+  document.getElementById('dir-btn-short').classList.toggle('active', dir === 'short');
+}
+
+
 function fmtUSD(n) {
   return '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
@@ -1747,9 +1784,11 @@ function calcMode3(balance, riskPct, leverage) {
   var estLoss  = rawLoss + feeAmt;
   var margin   = position / leverage;
 
-  var isLong = true;
+  var isLong;
   if (slInputMode === 'price') {
     isLong = parseFloat(document.getElementById('m3-sl-price').value) < entry;
+  } else {
+    isLong = (tradeDir === 'long');
   }
 
   var slPrice    = isLong ? entry * (1 - slPctFrac) : entry * (1 + slPctFrac);
@@ -1811,6 +1850,7 @@ function resetAll() {
   document.getElementById('lbl-sl').textContent= '0.54%';
   ['m2-entry','m2-sl','m2-tp1','m2-tp2'].forEach(function(id){document.getElementById(id).value='';});
   ['m3-entry','m3-sl-price','m3-sl-pct','m3-rr1','m3-rr2'].forEach(function(id){document.getElementById(id).value='';});
+  setTradeDir('long');
   hideResults();
 }
 
